@@ -312,7 +312,7 @@ class FlightPerformanceCalculator:
 
             # Find touchdown point (where altitude is close to zero)
             # Using a small threshold to account for sensor noise
-            altitude_threshold = 1.0  # meters
+            altitude_threshold = 0.02  # meters
             touchdown_candidates = landing_data[landing_data['Approxaltitude[m]'].abs() < altitude_threshold]
 
             if touchdown_candidates.empty:
@@ -326,16 +326,17 @@ class FlightPerformanceCalculator:
             touchdown_idx = None
             for idx in touchdown_candidates.index:
                 if idx > len(landing_data) - 10 & idx < len(takeoff_data) + 10:  # Skip points near the end of the dataset
-                    print(idx)
-                    continue
-
-
                 # Check if the next N points are also close to ground level
-            next_points = landing_data.loc[idx:idx + 1, 'Approxaltitude[m]']
-            if (next_points.abs() < altitude_threshold).all():
-                touchdown_idx = idx
+                    next_points = landing_data.loc[idx:idx + 1, 'Approxaltitude[m]']
+                    magval = pd.Series(next_points, index=["a","b","c","d"])
+                    print(magval["b"])
+                    # print(type(next_points.abs()))
+                    if (next_points.abs() < altitude_threshold).all():
+                        touchdown_idx = idx
+                        continue
 
 
+            print(touchdown_idx)
             if touchdown_idx is None:
                 # If no suitable touchdown point found, use the last altitude crossing
                 touchdown_idx = touchdown_candidates.index[-10] if len(touchdown_candidates) > 10 else \

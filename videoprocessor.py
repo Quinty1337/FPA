@@ -214,6 +214,102 @@ class VideoProcessor:
         
         print(f"Instructions created at {instructions_path}")
 
+    def create_standalone_video(self, frames_dir, output_video, frame_rate=30, width=1920, height=1080):
+        """
+        Create a standalone MP4 video from overlay frames with a black background
+        
+        Args:
+            frames_dir: Directory containing overlay PNG frames
+            output_video: Path to output MP4 file
+            frame_rate: Frame rate of the output video
+            width: Width of the output video
+            height: Height of the output video
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            import subprocess
+            import os
+            import shutil
+            
+            # Check if ffmpeg is available
+            if shutil.which('ffmpeg') is None:
+                print("Error: ffmpeg not found. Please install ffmpeg to create videos.")
+                return False
+            
+            # Command to create video from PNG frames
+            cmd = [
+                'ffmpeg',
+                '-y',  # Overwrite output file if it exists
+                '-r', str(frame_rate),  # Frame rate
+                '-f', 'image2',  # Input format
+                '-s', f'{width}x{height}',  # Size
+                '-i', os.path.join(frames_dir, 'overlay_%06d.png'),  # Input pattern
+                '-vcodec', 'libx264',  # Codec
+                '-crf', '23',  # Quality (lower is better)
+                '-pix_fmt', 'yuv420p',  # Pixel format for compatibility
+                output_video
+            ]
+            
+            # Run the command
+            print(f"Running command: {' '.join(cmd)}")
+            subprocess.run(cmd, check=True)
+            
+            return os.path.exists(output_video)
+            
+        except Exception as e:
+            print(f"Error creating standalone video: {e}")
+            return False
+
+    def create_composite_video(self, frames_dir, input_video, output_video, frame_rate=30):
+        """
+        Create a composite MP4 video by overlaying frames on an input video
+        
+        Args:
+            frames_dir: Directory containing overlay PNG frames
+            input_video: Path to input video file
+            output_video: Path to output MP4 file
+            frame_rate: Frame rate of the output video
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            import subprocess
+            import os
+            import shutil
+            
+            # Check if ffmpeg is available
+            if shutil.which('ffmpeg') is None:
+                print("Error: ffmpeg not found. Please install ffmpeg to create videos.")
+                return False
+            
+            # Command to overlay PNG frames on input video
+            cmd = [
+                'ffmpeg',
+                '-y',  # Overwrite output file if it exists
+                '-i', input_video,  # Input video
+                '-r', str(frame_rate),  # Frame rate for overlay
+                '-f', 'image2',  # Input format for overlay
+                '-i', os.path.join(frames_dir, 'overlay_%06d.png'),  # Overlay pattern
+                '-filter_complex', '[0:v][1:v]overlay=0:0',  # Overlay filter
+                '-c:v', 'libx264',  # Video codec
+                '-crf', '23',  # Quality (lower is better)
+                '-c:a', 'copy',  # Copy audio
+                output_video
+            ]
+            
+            # Run the command
+            print(f"Running command: {' '.join(cmd)}")
+            subprocess.run(cmd, check=True)
+            
+            return os.path.exists(output_video)
+        
+        except Exception as e:
+            print(f"Error creating composite video: {e}")
+            return False
+
 def add_gui_integration(parent_class):
     """Add overlay generation functionality to the GUI"""
     def generate_overlay_frames_clicked(self):
@@ -221,24 +317,27 @@ def add_gui_integration(parent_class):
         if self.performance_calculator is None:
             self.console_output.append("Error: Please load flight data first")
             return
-        
+
         try:
+            # Import required modules
+            from PyQt6.QtWidgets import QFileDialog
+
             # Ask for output directory
             output_dir = QFileDialog.getExistingDirectory(
                 self,
-                "Select Output Directory for Overlay Frames",
+                "Select Output Directory for Overlay",
                 os.path.dirname(self.current_file) if self.current_file else ""
             )
             
             if not output_dir:
                 return
-                
+            
             # Create output directory
             overlay_dir = os.path.join(output_dir, "telemetry_overlay")
             os.makedirs(overlay_dir, exist_ok=True)
             
-            # Ask for frame rate and duration
-            from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QDialogButtonBox
+            # Ask for frame rate, duration, and output format
+            from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QDialogButtonBox, QRadioButton, QGroupBox, QFileDialog
             
             dialog = QDialog(self)
             dialog.setWindowTitle("Overlay Settings")
@@ -262,6 +361,63 @@ def add_gui_integration(parent_class):
             dur_layout.addWidget(dur_spin)
             layout.addLayout(dur_layout)
             
+            # Output format options
+            format_group = QGroupBox("Output Format")
+            format_layout = QVBoxLayout(format_group)
+            
+            png_radio = QRadioButton("PNG Sequence (for video editing)")
+            mp4_radio = QRadioButton("MP4 Video")
+            mp4_radio.setChecked(True)  # Default to MP4
+            
+            format_layout.addWidget(png_radio)
+            format_layout.addWidget(mp4_radio)
+            layout.addWidget(format_group)
+            
+            # Video input option (only shown when MP4 is selected)
+            video_group = QGroupBox("Video Options")
+            video_layout = QVBoxLayout(video_group)
+            
+            standalone_radio = QRadioButton("Standalone overlay (black background)")
+            input_video_radio = QRadioButton("Composite with input video")
+            input_video_radio.setChecked(True)  # Default to using input video
+            
+            video_path_layout = QHBoxLayout()
+            video_path_label = QLabel("No video selected")
+            video_path_button = QPushButton("Select Video")
+            video_path = ""
+            
+            def select_video():
+                nonlocal video_path
+                path, _ = QFileDialog.getOpenFileName(
+                    dialog,
+                    "Select Input Video",
+                    os.path.dirname(self.current_file) if self.current_file else "",
+                    "Video Files (*.mp4 *.avi *.mov *.mkv);;All Files (*)"
+                )
+                if path:
+                    video_path = path
+                    video_path_label.setText(os.path.basename(path))
+            
+            video_path_button.clicked.connect(select_video)
+            video_path_layout.addWidget(video_path_label)
+            video_path_layout.addWidget(video_path_button)
+            
+            video_layout.addWidget(standalone_radio)
+            video_layout.addWidget(input_video_radio)
+            video_layout.addLayout(video_path_layout)
+            
+            layout.addWidget(video_group)
+            
+            # Show/hide video options based on selected format
+            def update_video_options():
+                video_group.setVisible(mp4_radio.isChecked())
+                video_path_label.setVisible(input_video_radio.isChecked())
+                video_path_button.setVisible(input_video_radio.isChecked())
+            
+            mp4_radio.toggled.connect(update_video_options)
+            input_video_radio.toggled.connect(update_video_options)
+            update_video_options()  # Initial state
+            
             # Buttons
             buttons = QDialogButtonBox(
                 QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -276,22 +432,70 @@ def add_gui_integration(parent_class):
             # Get settings
             frame_rate = fr_spin.value()
             duration = dur_spin.value() if dur_spin.value() > 0 else None
+            output_format = "mp4" if mp4_radio.isChecked() else "png"
+            use_input_video = input_video_radio.isChecked() if mp4_radio.isChecked() else False
             
-            # Create processor and generate frames
-            self.console_output.append("Generating overlay frames...")
+            # Create processor
+            self.console_output.append("Generating overlay...")
             processor = VideoProcessor(self.current_file)
-            processor.generate_overlay_frames(
-                output_dir=overlay_dir,
-                frame_rate=frame_rate,
-                duration=duration
-            )
-            processor.create_instructions_file(overlay_dir)
             
-            self.console_output.append(f"Overlay frames generated in {overlay_dir}")
+            if output_format == "png":
+                # Generate PNG sequence
+                processor.generate_overlay_frames(
+                    output_dir=overlay_dir,
+                    frame_rate=frame_rate,
+                    duration=duration
+                )
+                processor.create_instructions_file(overlay_dir)
+                self.console_output.append(f"Overlay frames generated in {overlay_dir}")
             
+            else:  # MP4 output
+                if use_input_video and not video_path:
+                    self.console_output.append("Error: No input video selected")
+                    return
+                
+                # Generate frames to a temporary directory
+                import tempfile
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    self.console_output.append("Generating overlay frames...")
+                    frames_dir = processor.generate_overlay_frames(
+                        output_dir=temp_dir,
+                        frame_rate=frame_rate,
+                        duration=duration
+                    )
+                    
+                    # Create output MP4 path
+                    output_mp4 = os.path.join(overlay_dir, "telemetry_overlay.mp4")
+                    
+                    # Compile to MP4
+                    self.console_output.append("Creating MP4 video...")
+                    
+                    if use_input_video:
+                        # Composite with input video
+                        success = processor.create_composite_video(
+                            frames_dir=frames_dir,
+                            input_video=video_path,
+                            output_video=output_mp4,
+                            frame_rate=frame_rate
+                        )
+                    else:
+                        # Standalone overlay video
+                        success = processor.create_standalone_video(
+                            frames_dir=frames_dir,
+                            output_video=output_mp4,
+                            frame_rate=frame_rate,
+                            width=1920,
+                            height=1080
+                        )
+                    
+                    if success:
+                        self.console_output.append(f"MP4 video created: {output_mp4}")
+                    else:
+                        self.console_output.append("Error: Failed to create MP4 video")
+        
         except Exception as e:
-            self.console_output.append(f"Error generating overlay frames: {str(e)}")
-    
+            self.console_output.append(f"Error generating overlay: {str(e)}")
+
     # Add method to parent class
     setattr(parent_class, 'generate_overlay_frames_clicked', generate_overlay_frames_clicked)
     
@@ -390,3 +594,203 @@ if __name__ == "__main__":
     else:
         # Run as standalone script
         main()
+def generate_overlay_frames_clicked(self):
+    # Check if flight data is loaded
+    if self.performance_calculator is None:
+        self.console_output.append("Error: Please load flight data first")
+        return
+    
+    # Validate that we have a video file
+    if not self.current_file:
+        self.console_output.append("Error: No video file selected")
+        return
+        
+    if not os.path.isfile(self.current_file):
+        self.console_output.append(f"Error: File does not exist: {self.current_file}")
+        return
+    
+    # Optional: Check file extension
+    valid_extensions = ['.mp4', '.avi', '.mov', '.mkv']  # Add relevant video formats
+    if not any(self.current_file.lower().endswith(ext) for ext in valid_extensions):
+        self.console_output.append(f"Warning: File may not be a supported video format: {self.current_file}")
+        # Consider adding a confirmation dialog here
+    
+    try:
+        # Remaining code...
+        # Ask for output directory
+        output_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select Output Directory for Overlay",
+            os.path.dirname(self.current_file) if self.current_file else ""
+        )
+        
+        if not output_dir:
+            return
+            
+        # Create output directory
+        overlay_dir = os.path.join(output_dir, "telemetry_overlay")
+        os.makedirs(overlay_dir, exist_ok=True)
+        
+        # Ask for frame rate, duration, and output format
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QDialogButtonBox, QRadioButton, QGroupBox
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Overlay Settings")
+        layout = QVBoxLayout(dialog)
+        
+        # Frame rate setting
+        fr_layout = QHBoxLayout()
+        fr_layout.addWidget(QLabel("Frame Rate (fps):"))
+        fr_spin = QSpinBox()
+        fr_spin.setRange(15, 120)
+        fr_spin.setValue(30)
+        fr_layout.addWidget(fr_spin)
+        layout.addLayout(fr_layout)
+        
+        # Duration setting
+        dur_layout = QHBoxLayout()
+        dur_layout.addWidget(QLabel("Duration (seconds, 0 for all):"))
+        dur_spin = QSpinBox()
+        dur_spin.setRange(0, 3600)
+        dur_spin.setValue(0)
+        dur_layout.addWidget(dur_spin)
+        layout.addLayout(dur_layout)
+        
+        # Output format options
+        format_group = QGroupBox("Output Format")
+        format_layout = QVBoxLayout(format_group)
+        
+        png_radio = QRadioButton("PNG Sequence (for video editing)")
+        mp4_radio = QRadioButton("MP4 Video (using OpenCV)")
+        mp4_radio.setChecked(True)  # Default to MP4
+        
+        format_layout.addWidget(png_radio)
+        format_layout.addWidget(mp4_radio)
+        layout.addWidget(format_group)
+        
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        
+        # Get settings
+        frame_rate = fr_spin.value()
+        duration = dur_spin.value() if dur_spin.value() > 0 else None
+        output_format = "mp4" if mp4_radio.isChecked() else "png"
+        
+        # Create processor
+        self.console_output.append("Generating overlay...")
+        from videoprocessor import VideoProcessor
+        processor = VideoProcessor(self.current_file)
+        
+        if output_format == "png":
+            # Generate PNG sequence
+            processor.generate_overlay_frames(
+                output_dir=overlay_dir,
+                frame_rate=frame_rate,
+                duration=duration
+            )
+            processor.create_instructions_file(overlay_dir)
+            self.console_output.append(f"Overlay frames generated in {overlay_dir}")
+            
+        else:  # MP4 output
+            # Generate frames to a temporary directory
+            import tempfile
+            with tempfile.TemporaryDirectory() as temp_dir:
+                self.console_output.append("Generating overlay frames...")
+                frames_dir = processor.generate_overlay_frames(
+                    output_dir=temp_dir,
+                    frame_rate=frame_rate,
+                    duration=duration
+                )
+                
+                # Create output MP4 path
+                output_mp4 = os.path.join(overlay_dir, "telemetry_overlay.mp4")
+                
+                # Create MP4 using OpenCV
+                self.console_output.append("Creating MP4 video using OpenCV...")
+                
+                # Use OpenCV instead of FFmpeg
+                success = self.create_video_with_opencv(
+                    frames_dir=frames_dir,
+                    output_video=output_mp4,
+                    frame_rate=frame_rate
+                )
+                
+                if success:
+                    self.console_output.append(f"MP4 video created: {output_mp4}")
+                else:
+                    self.console_output.append("Error: Failed to create MP4 video")
+        
+    except Exception as e:
+        self.console_output.append(f"Error generating overlay: {str(e)}")
+        import traceback
+        self.console_output.append(traceback.format_exc())
+
+def create_video_with_opencv(self, frames_dir, output_video, frame_rate=30):
+    """
+    Create an MP4 video from a sequence of overlay frames using OpenCV
+    
+    Args:
+        frames_dir: Directory containing overlay PNG frames
+        output_video: Path to output MP4 file
+        frame_rate: Frame rate of the output video
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        import cv2
+        import os
+        import glob
+        
+        # Get all PNG files and sort them numerically
+        png_files = sorted(glob.glob(os.path.join(frames_dir, 'overlay_*.png')))
+        
+        if not png_files:
+            self.console_output.append("No overlay frames found")
+            return False
+        
+        # Read the first frame to get dimensions
+        first_frame = cv2.imread(png_files[0])
+        height, width, channels = first_frame.shape
+        
+        # Create VideoWriter object
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use MP4V codec
+        out = cv2.VideoWriter(output_video, fourcc, frame_rate, (width, height))
+        
+        # Process each frame
+        total_frames = len(png_files)
+        self.console_output.append(f"Processing {total_frames} frames...")
+        
+        for i, file in enumerate(png_files):
+            # Show progress every 10%
+            if i % max(1, total_frames // 10) == 0:
+                self.console_output.append(f"Processing frame {i+1}/{total_frames} ({(i+1)/total_frames*100:.1f}%)")
+            
+            # Read and write frame
+            frame = cv2.imread(file)
+            out.write(frame)
+        
+        # Release the VideoWriter
+        out.release()
+        
+        # Verify the output file exists and has content
+        if os.path.exists(output_video) and os.path.getsize(output_video) > 0:
+            self.console_output.append(f"Video saved to: {output_video}")
+            return True
+        else:
+            self.console_output.append("Error: Output video file is empty or doesn't exist")
+            return False
+        
+    except Exception as e:
+        self.console_output.append(f"Error creating video with OpenCV: {str(e)}")
+        import traceback
+        self.console_output.append(traceback.format_exc())
+        return False

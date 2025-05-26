@@ -313,6 +313,7 @@ class FlightAnalyzerGUI(QMainWindow):
             self.file_label.setText(os.path.basename(file_name))
             self.process_file(file_name)
             self.export_button.setEnabled(True)
+            self.overlay_button.setEnabled(True)  # Add this line to enable the overlay button
 
     def create_plots(self):
         """Create visualization plots with takeoff and landing points"""
