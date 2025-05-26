@@ -44,7 +44,7 @@ def convert_to_kml(input_file, sheet_name=None, output_file='output.kml'):
         # Define the exact column names from your CSV
         lat_col = 'Latitude[deg]'
         lon_col = 'Longitude[deg]'
-        alt_col = 'Altitude[m]'
+        alt_col = 'Approxaltitude[m]'
         time_col = 'Time[ms]'
         
         # Convert coordinates using the clean_coordinate function
@@ -57,17 +57,24 @@ def convert_to_kml(input_file, sheet_name=None, output_file='output.kml'):
         df['original_altitude'] = df[alt_col].copy()
         
         # Calculate altitude correction based on start and end points
-        flight_duration = (df[time_col].max() - df[time_col].min()) / 1000  # convert to seconds
-        start_alt = df.loc[df[time_col] == df[time_col].min(), alt_col].iloc[0]
-        end_alt = df.loc[df[time_col] == df[time_col].max(), alt_col].iloc[0]
-        
-        # Calculate linear correction
-        altitude_offset = -(start_alt + end_alt) / 2
-        
-        print(f"Altitude offset correction: {altitude_offset:.2f}m (start: {start_alt:.2f}m, end: {end_alt:.2f}m)")
-        
-        # Apply correction
-        df[alt_col] = df[alt_col] + altitude_offset
+# Find start and end altitudes (average of first and last 10 points)
+        start_alt = df[alt_col].head(10).mean()
+        end_alt = df[alt_col].tail(10).mean()
+
+# Calculate the offset (average of start and end)
+        offset = (start_alt + end_alt) / 2
+        print(f"Altitude offset correction: {offset:.2f}m (start: {start_alt:.2f}m, end: {end_alt:.2f}m)")
+
+# Apply correction
+        df[alt_col] = df[alt_col] - offset
+
+# Apply smoothing (optional, if needed)
+        try:
+            df[alt_col] = df[alt_col].rolling(window=5, center=True).mean()
+    # Fill missing values at beginning and end
+            df[alt_col] = df[alt_col].fillna(df['original_altitude'] - offset)
+        except Exception as e:
+            print(f"Warning: Altitude smoothing failed: {e}")
         
         # Convert milliseconds to seconds and group by second
         df['second'] = (df[time_col] / 1000).astype(int)
@@ -76,7 +83,7 @@ def convert_to_kml(input_file, sheet_name=None, output_file='output.kml'):
         print(f"\nOriginal number of points: {len(df)}")
         print(f"Number of points after sampling: {len(df_sampled)}")
         
-        # Print first few rows of coordinate data after conversion
+        # Print first few rows of coordinate data after conversion and sampling:")
         print("\nFirst few rows of coordinate data after conversion and sampling:")
         print(df_sampled[[lat_col, lon_col, alt_col]].head())
         
@@ -104,16 +111,16 @@ def convert_to_kml(input_file, sheet_name=None, output_file='output.kml'):
             kml.write('          <color>ff0000ff</color>\n')
             kml.write('          <width>2</width>\n')
             kml.write('       </LineStyle>\n')
-            kml.write('       <PolyStyle>\n')
-            kml.write('          <color>7f00007f</color>\n')
-            kml.write('       </PolyStyle>\n')
+#            kml.write('       <PolyStyle>\n')
+#            kml.write('          <color>00000007</color>\n')
+#            kml.write('       </PolyStyle>\n')
             kml.write('    </Style>\n')
             kml.write('    <Placemark>\n')
             kml.write('      <name>Path</name>\n')
             kml.write('      <description>Transparent light red wall with red outlines</description>\n')
             kml.write('      <styleUrl>#redLinelightredPoly</styleUrl>\n')
             kml.write('      <LineString>\n')
-            kml.write('        <extrude>1</extrude>\n')
+            kml.write('        <extrude>0</extrude>\n')
             kml.write('        <tessellate>1</tessellate>\n')
             kml.write('        <altitudeMode>absolute</altitudeMode>\n')
             kml.write('        <coordinates>\n')

@@ -32,34 +32,34 @@ class FlightPerformanceCalculator:
 
             # ALTITUDE CORRECTION
             # First, store original altitude
-            self.df['original_altitude'] = self.df['Altitude[m]'].copy()
+            self.df['original_altitude'] = self.df['Approxaltitude[m]'].copy()
 
             # Find start and end altitudes (average of first and last 10 points)
-            start_alt = self.df['Altitude[m]'].head(10).mean()
-            end_alt = self.df['Altitude[m]'].tail(10).mean()
+            start_alt = self.df['Approxaltitude[m]'].head(10).mean()
+            end_alt = self.df['Approxaltitude[m]'].tail(10).mean()
 
             # Calculate the offset (average of start and end)
             offset = (start_alt + end_alt) / 2
             print(f"Altitude offset correction: {offset:.2f}m (start: {start_alt:.2f}m, end: {end_alt:.2f}m)")
 
             # Apply correction
-            self.df['Altitude[m]'] = self.df['Altitude[m]'] - offset
+            self.df['Approxaltitude[m]'] = self.df['Approxaltitude[m]'] - offset
 
             # Smooth altitude data with a simple rolling average (easier than median)
             try:
-                self.df['Altitude[m]'] = self.df['Altitude[m]'].rolling(window=5, center=True).mean()
+                self.df['Approxaltitude[m]'] = self.df['Approxaltitude[m]'].rolling(window=5, center=True).mean()
                 # Fill missing values at beginning and end
-                self.df['Altitude[m]'] = self.df['Altitude[m]'].fillna(self.df['original_altitude'] - offset)
+                self.df['Approxaltitude[m]'] = self.df['Approxaltitude[m]'].fillna(self.df['original_altitude'] - offset)
             except Exception as e:
                 print(f"Warning: Altitude smoothing failed: {e}")
 
             # Group by second for calculating vertical speed
             try:
                 # Group by second to get one altitude value per second
-                alt_by_second = self.df.groupby('second')['Altitude[m]'].mean().reset_index()
+                alt_by_second = self.df.groupby('second')['Approxaltitude[m]'].mean().reset_index()
 
                 # Calculate vertical speed with simple difference (safer)
-                alt_by_second['vertical_speed'] = alt_by_second['Altitude[m]'].diff()
+                alt_by_second['vertical_speed'] = alt_by_second['Approxaltitude[m]'].diff()
 
                 # Apply simple smoothing to vertical speed
                 alt_by_second['vertical_speed'] = alt_by_second['vertical_speed'].rolling(window=3, min_periods=1,
@@ -233,7 +233,6 @@ class FlightPerformanceCalculator:
                 # Store indices for plotting
                 self.takeoff_start_idx = None
                 self.takeoff_end_idx = None
-                print("test1")
                 return 0  # No valid takeoff data found
 
             # Find where vertical acceleration becomes positive (aircraft lifts off)
@@ -256,13 +255,12 @@ class FlightPerformanceCalculator:
                 # Alternative: use where altitude starts increasing significantly
                 alt_threshold = 10.0  # meters
                 liftoff_idx = takeoff_data_after_start[
-                    takeoff_data_after_start['Altitude[m]'] > alt_threshold].index.min()
+                    takeoff_data_after_start['Approxaltitude[m]'] > alt_threshold].index.min()
 
                 if pd.isna(liftoff_idx):
                     # Store indices for plotting
                     self.takeoff_start_idx = takeoff_start_idx
                     self.takeoff_end_idx = None
-                    print("test2")
                     return 0  # No valid liftoff point found
 
             # Store indices for plotting
@@ -293,7 +291,6 @@ class FlightPerformanceCalculator:
                 # Use average speed during takeoff
                 avg_speed = takeoff_data.loc[takeoff_start_idx:liftoff_idx, 'speed[m/s]'].mean()
                 distance = avg_speed * takeoff_duration
-                print("test4")
                 return distance
 
         except Exception as e:
@@ -311,11 +308,12 @@ class FlightPerformanceCalculator:
         try:
             # Filter data for landing phase - assuming it's at the end of the flight
             landing_data = self.df.copy()
+            takeoff_data = self.df.copy()
 
             # Find touchdown point (where altitude is close to zero)
             # Using a small threshold to account for sensor noise
-            altitude_threshold = 2.0  # meters
-            touchdown_candidates = landing_data[landing_data['Altitude[m]'].abs() < altitude_threshold]
+            altitude_threshold = 1.0  # meters
+            touchdown_candidates = landing_data[landing_data['Approxaltitude[m]'].abs() < altitude_threshold]
 
             if touchdown_candidates.empty:
                 # Store indices for plotting
@@ -327,22 +325,25 @@ class FlightPerformanceCalculator:
             # This helps avoid false positives during approach
             touchdown_idx = None
             for idx in touchdown_candidates.index:
-                if idx > len(landing_data) - 10:  # Skip points near the end of the dataset
+                if idx > len(landing_data) - 10 & idx < len(takeoff_data) + 10:  # Skip points near the end of the dataset
+                    print(idx)
                     continue
 
+
                 # Check if the next N points are also close to ground level
-                next_points = landing_data.loc[idx:idx + 10, 'Altitude[m]']
-                if (next_points.abs() < altitude_threshold).all():
-                    touchdown_idx = idx
-                    break
+            next_points = landing_data.loc[idx:idx + 1, 'Approxaltitude[m]']
+            if (next_points.abs() < altitude_threshold).all():
+                touchdown_idx = idx
+
 
             if touchdown_idx is None:
                 # If no suitable touchdown point found, use the last altitude crossing
                 touchdown_idx = touchdown_candidates.index[-10] if len(touchdown_candidates) > 10 else \
                 touchdown_candidates.index[0]
+                print('alticross')
 
             # Find where speed approaches zero after touchdown
-            speed_threshold = 5.0  # m/s
+            speed_threshold = 2.0  # m/s
             landing_data_after_touchdown = landing_data.loc[touchdown_idx:]
             stop_candidates = landing_data_after_touchdown[landing_data_after_touchdown['speed[m/s]'] < speed_threshold]
 

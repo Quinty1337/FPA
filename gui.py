@@ -13,6 +13,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
+import videoprocessor
+
 from io import StringIO
 import contextlib
 
@@ -176,9 +178,14 @@ class FlightAnalyzerGUI(QMainWindow):
         self.export_button.clicked.connect(self.export_kml)
         self.export_button.setEnabled(False)
 
+        self.overlay_button = QPushButton("Generate Telemetry Overlay")
+        self.overlay_button.clicked.connect(self.generate_overlay_frames_clicked)
+        self.overlay_button.setEnabled(False)
+
         self.export_status = QLabel("")
 
         export_layout.addWidget(self.export_button)
+        export_layout.addWidget(self.overlay_button)
         export_layout.addWidget(self.export_status)
         export_group.setLayout(export_layout)
         layout.addWidget(export_group)
@@ -494,7 +501,7 @@ class FlightAnalyzerGUI(QMainWindow):
 
     def plot_altitude_profile(self, ax):
         """Plot the altitude profile on the given axis"""
-        ax.plot(self.processed_data['second'], self.processed_data['Altitude[m]'], 'b-')
+        ax.plot(self.processed_data['second'], self.processed_data['Approxaltitude[m]'], 'b-')
         ax.set_title('Processed Altitude Profile with Runway Points')
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Altitude (m)')
@@ -503,25 +510,25 @@ class FlightAnalyzerGUI(QMainWindow):
         # Add takeoff and landing points if available
         if hasattr(self.performance_calculator, 'takeoff_start_idx') and self.performance_calculator.takeoff_start_idx is not None:
             start_time = self.processed_data.loc[self.performance_calculator.takeoff_start_idx, 'second']
-            start_alt = self.processed_data.loc[self.performance_calculator.takeoff_start_idx, 'Altitude[m]']
+            start_alt = self.processed_data.loc[self.performance_calculator.takeoff_start_idx, 'Approxaltitude[m]']
             ax.scatter(start_time, start_alt, color='blue', s=80, marker='o', 
                    label='Takeoff Start', zorder=5)
                    
         if hasattr(self.performance_calculator, 'takeoff_end_idx') and self.performance_calculator.takeoff_end_idx is not None:
             end_time = self.processed_data.loc[self.performance_calculator.takeoff_end_idx, 'second']
-            end_alt = self.processed_data.loc[self.performance_calculator.takeoff_end_idx, 'Altitude[m]']
+            end_alt = self.processed_data.loc[self.performance_calculator.takeoff_end_idx, 'Approxaltitude[m]']
             ax.scatter(end_time, end_alt, color='red', s=80, marker='o', 
                    label='Takeoff End', zorder=5)
                    
         if hasattr(self.performance_calculator, 'landing_start_idx') and self.performance_calculator.landing_start_idx is not None:
             start_time = self.processed_data.loc[self.performance_calculator.landing_start_idx, 'second']
-            start_alt = self.processed_data.loc[self.performance_calculator.landing_start_idx, 'Altitude[m]']
+            start_alt = self.processed_data.loc[self.performance_calculator.landing_start_idx, 'Approxaltitude[m]']
             ax.scatter(start_time, start_alt, color='green', s=80, marker='o', 
                    label='Landing Start', zorder=5)
                    
         if hasattr(self.performance_calculator, 'landing_end_idx') and self.performance_calculator.landing_end_idx is not None:
             end_time = self.processed_data.loc[self.performance_calculator.landing_end_idx, 'second']
-            end_alt = self.processed_data.loc[self.performance_calculator.landing_end_idx, 'Altitude[m]']
+            end_alt = self.processed_data.loc[self.performance_calculator.landing_end_idx, 'Approxaltitude[m]']
             ax.scatter(end_time, end_alt, color='yellow', s=80, marker='o', 
                    label='Landing End', zorder=5)
 
@@ -550,7 +557,7 @@ class FlightAnalyzerGUI(QMainWindow):
         if 'original_altitude' in self.processed_data.columns:
             ax.plot(self.processed_data['second'], self.processed_data['original_altitude'], 'r--', 
                 alpha=0.5, label='Original')
-            ax.plot(self.processed_data['second'], self.processed_data['Altitude[m]'], 'b-', 
+            ax.plot(self.processed_data['second'], self.processed_data['Approxaltitude[m]'], 'b-', 
                 label='Processed')
             ax.set_title('Original vs Processed Altitude')
             ax.set_xlabel('Time (s)')
@@ -595,8 +602,6 @@ def main():
     window.show()
     sys.exit(app.exec())
 
-if __name__ == "__main__":
-    main()
 def process_data(self):
     """Process and prepare data for display"""
     if self.csv_file is None:
@@ -612,3 +617,13 @@ def process_data(self):
     # Update the display
     self.update_graph_display()
     self.update_performance_summary()
+
+# Apply the GUI integration from the Videoprocessor module
+try:
+    videoprocessor.add_gui_integration(FlightAnalyzerGUI)
+    print("Video processing functionality integrated successfully")
+except Exception as e:
+    print(f"Failed to integrate video processing: {e}")
+
+if __name__ == "__main__":
+    main()
