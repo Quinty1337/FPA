@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+from kmlconverter import clean_coordinate
 
 class FlightPerformanceCalculator:
     def __init__(self, csv_file):
@@ -233,6 +233,7 @@ class FlightPerformanceCalculator:
                 # Store indices for plotting
                 self.takeoff_start_idx = None
                 self.takeoff_end_idx = None
+                print("test1")
                 return 0  # No valid takeoff data found
 
             # Find where vertical acceleration becomes positive (aircraft lifts off)
@@ -261,6 +262,7 @@ class FlightPerformanceCalculator:
                     # Store indices for plotting
                     self.takeoff_start_idx = takeoff_start_idx
                     self.takeoff_end_idx = None
+                    print("test2")
                     return 0  # No valid liftoff point found
 
             # Store indices for plotting
@@ -271,16 +273,17 @@ class FlightPerformanceCalculator:
             # Rest of the function remains the same...
 
             # If GPS coordinates are available, use them for more accurate distance
-            if 'Longitude' in self.df.columns and 'Latitude' in self.df.columns:
+            if 'Longitude[deg]' in self.df.columns and 'Latitude[deg]' in self.df.columns:
                 # Calculate distance using Haversine formula between points
                 from geopy.distance import geodesic
 
-                start_coords = (takeoff_data.loc[takeoff_start_idx, 'Latitude'],
-                                takeoff_data.loc[takeoff_start_idx, 'Longitude'])
-                end_coords = (takeoff_data.loc[liftoff_idx, 'Latitude'],
-                              takeoff_data.loc[liftoff_idx, 'Longitude'])
+                start_coords = (clean_coordinate(takeoff_data.loc[takeoff_start_idx, 'Latitude[deg]']),
+                                clean_coordinate(takeoff_data.loc[takeoff_start_idx, 'Longitude[deg]']))
+                end_coords = (clean_coordinate(takeoff_data.loc[liftoff_idx, 'Latitude[deg]']),
+                              clean_coordinate(takeoff_data.loc[liftoff_idx, 'Longitude[deg]']))
 
                 distance = geodesic(start_coords, end_coords).meters
+                print("Takeoff Start Coords: ", start_coords,"Takeoff End Coords: ", end_coords)
                 return distance
             else:
                 # Estimate distance based on speed and time
@@ -290,6 +293,7 @@ class FlightPerformanceCalculator:
                 # Use average speed during takeoff
                 avg_speed = takeoff_data.loc[takeoff_start_idx:liftoff_idx, 'speed[m/s]'].mean()
                 distance = avg_speed * takeoff_duration
+                print("test4")
                 return distance
 
         except Exception as e:
@@ -338,7 +342,7 @@ class FlightPerformanceCalculator:
                 touchdown_candidates.index[0]
 
             # Find where speed approaches zero after touchdown
-            speed_threshold = 1.0  # m/s
+            speed_threshold = 5.0  # m/s
             landing_data_after_touchdown = landing_data.loc[touchdown_idx:]
             stop_candidates = landing_data_after_touchdown[landing_data_after_touchdown['speed[m/s]'] < speed_threshold]
 
@@ -356,15 +360,16 @@ class FlightPerformanceCalculator:
             # Rest of the function remains the same...
 
             # If GPS coordinates are available, use them for more accurate distance
-            if 'Longitude' in self.df.columns and 'Latitude' in self.df.columns:
+            if 'Longitude[deg]' in self.df.columns and 'Latitude[deg]' in self.df.columns:
                 # Calculate distance using Haversine formula between points
                 from geopy.distance import geodesic
 
-                start_coords = (landing_data.loc[touchdown_idx, 'Latitude'],
-                                landing_data.loc[touchdown_idx, 'Longitude'])
-                end_coords = (landing_data.loc[stop_idx, 'Latitude'],
-                              landing_data.loc[stop_idx, 'Longitude'])
+                start_coords = (clean_coordinate(landing_data.loc[touchdown_idx, 'Latitude[deg]']),
+                                clean_coordinate(landing_data.loc[touchdown_idx, 'Longitude[deg]']))
+                end_coords = (clean_coordinate(landing_data.loc[stop_idx, 'Latitude[deg]']),
+                              clean_coordinate(landing_data.loc[stop_idx, 'Longitude[deg]']))
 
+                print("Landing Start Coords: ", start_coords, "Landing End Coords: ", end_coords)
                 distance = geodesic(start_coords, end_coords).meters
                 return distance
             else:
