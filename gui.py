@@ -1,15 +1,36 @@
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QFileDialog,
+                            QLabel, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox,
+                            QLineEdit, QGridLayout, QDoubleSpinBox, QComboBox, 
+                            QTextEdit, QTabWidget)  # Add QTabWidget and QTextEdit
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont  # Add this import
 import sys
 import os
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QFileDialog,
-                           QLabel, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox,
-                           QLineEdit, QGridLayout, QDoubleSpinBox, QComboBox)  # Add these imports
-from PyQt6.QtCore import Qt
 import pandas as pd
 from kmlconverter import convert_to_kml, clean_coordinate
 from performancecalc import FlightPerformanceCalculator
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+
+from io import StringIO
+import contextlib
+
+
+class ConsoleRedirector(StringIO):
+    def __init__(self, text_widget):
+        super(ConsoleRedirector, self).__init__()
+        self.text_widget = text_widget
+        self.old_stdout = sys.stdout
+
+    def write(self, text):
+        # Write to the original stdout
+        self.old_stdout.write(text)
+        # Also write to the text widget
+        self.text_widget.append(text)
+
+    def flush(self):
+        self.old_stdout.flush()
 
 class FlightAnalyzerGUI(QMainWindow):
     def __init__(self):
@@ -147,11 +168,29 @@ class FlightAnalyzerGUI(QMainWindow):
         perf_group.setLayout(perf_layout)
         layout.addWidget(perf_group)
 
-        # Add plotting section with graph selector
-        plot_group = QGroupBox("Flight Data Visualization")
-        plot_layout = QVBoxLayout()
+        # Create export section
+        export_group = QGroupBox("Export")
+        export_layout = QHBoxLayout()
 
-        # Add a dropdown to select which graph to display
+        self.export_button = QPushButton("Export to KML")
+        self.export_button.clicked.connect(self.export_kml)
+        self.export_button.setEnabled(False)
+
+        self.export_status = QLabel("")
+
+        export_layout.addWidget(self.export_button)
+        export_layout.addWidget(self.export_status)
+        export_group.setLayout(export_layout)
+        layout.addWidget(export_group)
+
+        # Create tab widget for graphs and console
+        tab_widget = QTabWidget()
+
+        # First tab for plots
+        plot_tab = QWidget()
+        plot_layout = QVBoxLayout(plot_tab)
+
+        # Add graph selector and plots as before
         graph_selector_layout = QHBoxLayout()
         self.graph_selector = QComboBox()
         self.graph_selector.addItems([
@@ -172,23 +211,30 @@ class FlightAnalyzerGUI(QMainWindow):
         self.canvas = FigureCanvas(self.figure)
         plot_layout.addWidget(self.canvas)
 
-        plot_group.setLayout(plot_layout)
-        layout.addWidget(plot_group)
+        # Second tab for console
+        console_tab = QWidget()
+        console_layout = QVBoxLayout(console_tab)
+        self.console_output = QTextEdit()
+        self.console_output.setReadOnly(True)
+        self.console_output.setFont(QFont("Courier New", 9))
+        self.console_output.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
 
-        # Create export section
-        export_group = QGroupBox("Export")
-        export_layout = QHBoxLayout()
+        # Clear button
+        clear_console_button = QPushButton("Clear Console")
+        clear_console_button.clicked.connect(self.clear_console)
+        console_layout.addWidget(self.console_output)
+        console_layout.addWidget(clear_console_button)
 
-        self.export_button = QPushButton("Export to KML")
-        self.export_button.clicked.connect(self.export_kml)
-        self.export_button.setEnabled(False)
+        # Add tabs
+        tab_widget.addTab(plot_tab, "Graphs")
+        tab_widget.addTab(console_tab, "Console")
 
-        self.export_status = QLabel("")
+        # Add tab widget to layout
+        layout.addWidget(tab_widget)
 
-        export_layout.addWidget(self.export_button)
-        export_layout.addWidget(self.export_status)
-        export_group.setLayout(export_layout)
-        layout.addWidget(export_group)
+        # Set up console redirection
+        self.stdout_redirector = ConsoleRedirector(self.console_output)
+        sys.stdout = self.stdout_redirector
 
         # Data storage
         self.current_file = None
@@ -268,72 +314,40 @@ class FlightAnalyzerGUI(QMainWindow):
 
         self.figure.clear()
         
-        # Create subplots
-        ax1 = self.figure.add_subplot(221)  # Altitude vs Time
-        ax2 = self.figure.add_subplot(222)  # Speed vs Time
-        ax3 = self.figure.add_subplot(223)  # Vertical Speed vs Time
-        ax4 = self.figure.add_subplot(224)  # Original vs Processed Altitude
-
-        # Plot altitude profile
-        ax1.plot(self.processed_data['second'], self.processed_data['Altitude[m]'], 'b-')
-        ax1.set_title('Processed Altitude Profile with Runway Points')
-        ax1.set_xlabel('Time (s)')
-        ax1.set_ylabel('Altitude (m)')
-        ax1.grid(True)
+        # Get the selected graph index
+        selected_graph = self.graph_selector.currentIndex()
         
-        # Add takeoff and landing points if available
-        if hasattr(self.performance_calculator, 'takeoff_start_idx') and self.performance_calculator.takeoff_start_idx is not None:
-            start_time = self.processed_data.loc[self.performance_calculator.takeoff_start_idx, 'second']
-            start_alt = self.processed_data.loc[self.performance_calculator.takeoff_start_idx, 'Altitude[m]']
-            ax1.scatter(start_time, start_alt, color='blue', s=80, marker='o', 
-                   label='Takeoff Start', zorder=5)
-                   
-        if hasattr(self.performance_calculator, 'takeoff_end_idx') and self.performance_calculator.takeoff_end_idx is not None:
-            end_time = self.processed_data.loc[self.performance_calculator.takeoff_end_idx, 'second']
-            end_alt = self.processed_data.loc[self.performance_calculator.takeoff_end_idx, 'Altitude[m]']
-            ax1.scatter(end_time, end_alt, color='red', s=80, marker='o', 
-                   label='Takeoff End', zorder=5)
-                   
-        if hasattr(self.performance_calculator, 'landing_start_idx') and self.performance_calculator.landing_start_idx is not None:
-            start_time = self.processed_data.loc[self.performance_calculator.landing_start_idx, 'second']
-            start_alt = self.processed_data.loc[self.performance_calculator.landing_start_idx, 'Altitude[m]']
-            ax1.scatter(start_time, start_alt, color='green', s=80, marker='o', 
-                   label='Landing Start', zorder=5)
-                   
-        if hasattr(self.performance_calculator, 'landing_end_idx') and self.performance_calculator.landing_end_idx is not None:
-            end_time = self.processed_data.loc[self.performance_calculator.landing_end_idx, 'second']
-            end_alt = self.processed_data.loc[self.performance_calculator.landing_end_idx, 'Altitude[m]']
-            ax1.scatter(end_time, end_alt, color='yellow', s=80, marker='o', 
-                   label='Landing End', zorder=5)
-
-        # Add legend for the runway points
-        ax1.legend(loc='upper right')
-
-        # Plot speed profile
-        ax2.plot(self.processed_data['second'], self.processed_data['speed[m/s]'], 'r-')
-        ax2.set_title('Speed Profile')
-        ax2.set_xlabel('Time (s)')
-        ax2.set_ylabel('Speed (m/s)')
-        ax2.grid(True)
-
-        # Plot vertical speed
-        ax3.plot(self.processed_data['second'], self.processed_data['vertical_speed'], 'g-')
-        ax3.set_title('Vertical Speed Profile')
-        ax3.set_xlabel('Time (s)')
-        ax3.set_ylabel('Vertical Speed (m/s)')
-        ax3.grid(True)
+        if selected_graph == 0:
+            # "All Graphs" - Show the 2x2 grid
+            ax1 = self.figure.add_subplot(221)  # Altitude vs Time
+            ax2 = self.figure.add_subplot(222)  # Speed vs Time
+            ax3 = self.figure.add_subplot(223)  # Vertical Speed vs Time
+            ax4 = self.figure.add_subplot(224)  # Original vs Processed Altitude
+            
+            self.plot_altitude_profile(ax1)
+            self.plot_speed_profile(ax2)
+            self.plot_vertical_speed(ax3)
+            self.plot_original_vs_processed(ax4)
         
-        # Plot original vs processed altitude
-        if 'original_altitude' in self.processed_data.columns:
-            ax4.plot(self.processed_data['second'], self.processed_data['original_altitude'], 'r--', 
-                 alpha=0.5, label='Original')
-            ax4.plot(self.processed_data['second'], self.processed_data['Altitude[m]'], 'b-', 
-                 label='Processed')
-            ax4.set_title('Original vs Processed Altitude')
-            ax4.set_xlabel('Time (s)')
-            ax4.set_ylabel('Altitude (m)')
-            ax4.legend()
-            ax4.grid(True)
+        elif selected_graph == 1:
+            # "Altitude Profile" - Single full-width graph
+            ax = self.figure.add_subplot(111)
+            self.plot_altitude_profile(ax)
+        
+        elif selected_graph == 2:
+            # "Speed Profile" - Single full-width graph
+            ax = self.figure.add_subplot(111)
+            self.plot_speed_profile(ax)
+        
+        elif selected_graph == 3:
+            # "Vertical Speed" - Single full-width graph
+            ax = self.figure.add_subplot(111)
+            self.plot_vertical_speed(ax)
+        
+        elif selected_graph == 4:
+            # "Original vs Processed Altitude" - Single full-width graph
+            ax = self.figure.add_subplot(111)
+            self.plot_original_vs_processed(ax)
 
         self.figure.tight_layout()
         self.canvas.draw()
@@ -531,18 +545,49 @@ class FlightAnalyzerGUI(QMainWindow):
         ax.grid(True)
 
     def plot_original_vs_processed(self, ax):
-        """Plot original vs processed altitude on the given axis"""
+        """Plot the original vs processed altitude"""
+        # Check if 'original_altitude' exists in the data
         if 'original_altitude' in self.processed_data.columns:
             ax.plot(self.processed_data['second'], self.processed_data['original_altitude'], 'r--', 
-                 alpha=0.5, label='Original')
+                alpha=0.5, label='Original')
             ax.plot(self.processed_data['second'], self.processed_data['Altitude[m]'], 'b-', 
-                 label='Processed')
+                label='Processed')
             ax.set_title('Original vs Processed Altitude')
             ax.set_xlabel('Time (s)')
             ax.set_ylabel('Altitude (m)')
-            ax.legend()
             ax.grid(True)
+            ax.legend(loc='upper right')
+        else:
+            # If original_altitude is not available, just show processed
+            self.plot_altitude_profile(ax)
 
+    def clear_console(self):
+        """Clear the console output"""
+        self.console_output.clear()
+
+class ConsoleRedirector(StringIO):
+    def __init__(self, text_widget):
+        super(ConsoleRedirector, self).__init__()
+        self.text_widget = text_widget
+        self.old_stdout = sys.stdout
+
+    def write(self, text):
+        # Write to the original stdout
+        self.old_stdout.write(text)
+        # Also write to the text widget
+        self.text_widget.append(text)
+
+    def flush(self):
+        self.old_stdout.flush()
+
+def clear_console(self):
+    """Clear the console output text widget"""
+    self.console_output.clear()
+
+def closeEvent(self, event):
+    """Restore original stdout when closing the application"""
+    sys.stdout = self.stdout_redirector.old_stdout
+    super().closeEvent(event)
 
 def main():
     app = QApplication(sys.argv)
@@ -550,6 +595,20 @@ def main():
     window.show()
     sys.exit(app.exec())
 
-
 if __name__ == "__main__":
     main()
+def process_data(self):
+    """Process and prepare data for display"""
+    if self.csv_file is None:
+        return
+        
+    # Create performance calculator
+    self.performance_calculator = FlightPerformanceCalculator(self.csv_file)
+    
+    # IMPORTANT CHANGE: Use the processed dataframe directly from the performance calculator
+    # This ensures we're using the same corrected altitude data
+    self.processed_data = self.performance_calculator.df
+    
+    # Update the display
+    self.update_graph_display()
+    self.update_performance_summary()

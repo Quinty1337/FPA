@@ -4,15 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bf3814e2-8071-437a-bd81-8cc7317154c4" name="Changes" comment="1.0">
-      <change beforePath="$PROJECT_DIR$/.idea/PythonProject2.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/FPA.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+    <list default="true" id="bf3814e2-8071-437a-bd81-8cc7317154c4" name="Changes" comment="1.1 RunwayLength GPS Fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/performancecalc.py" beforeDir="false" afterPath="$PROJECT_DIR$/performancecalc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui.py" afterDir="false" />
     </list>
-    <list id="1cb0454a-ab8c-4bcf-9b4d-37d1a54d8501" name="Changes by jorn0" comment="">
-      <change beforePath="$PROJECT_DIR$/performancecalc.py" beforeDir="false" afterPath="$PROJECT_DIR$/performancecalc.py" afterDir="false" />
-    </list>
+    <list id="8b8810a2-d685-4e90-9ed8-72ab16f3edc2" name="Changes by jorn0" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -38,23 +34,6 @@
     "accountId": "c2c3352f-5a69-4401-928c-a238fa19221f"
   }
 }]]></component>
-  <component name="LineStatusTrackerManager">
-    <file path="$PROJECT_DIR$/performancecalc.py">
-      <ranges>
-        <range start1="2" end1="3" start2="2" end2="3" changelist="bf3814e2-8071-437a-bd81-8cc7317154c4" />
-        <range start1="235" end1="235" start2="235" end2="236" changelist="1cb0454a-ab8c-4bcf-9b4d-37d1a54d8501" />
-        <range start1="263" end1="263" start2="264" end2="265" changelist="1cb0454a-ab8c-4bcf-9b4d-37d1a54d8501" />
-        <range start1="273" end1="274" start2="275" end2="276" changelist="bf3814e2-8071-437a-bd81-8cc7317154c4" />
-        <range start1="277" end1="281" start2="279" end2="283" changelist="bf3814e2-8071-437a-bd81-8cc7317154c4" />
-        <range start1="283" end1="283" start2="285" end2="286" changelist="1cb0454a-ab8c-4bcf-9b4d-37d1a54d8501" />
-        <range start1="292" end1="292" start2="295" end2="296" changelist="1cb0454a-ab8c-4bcf-9b4d-37d1a54d8501" />
-        <range start1="340" end1="341" start2="344" end2="345" changelist="bf3814e2-8071-437a-bd81-8cc7317154c4" />
-        <range start1="358" end1="359" start2="362" end2="363" changelist="bf3814e2-8071-437a-bd81-8cc7317154c4" />
-        <range start1="362" end1="366" start2="366" end2="370" changelist="bf3814e2-8071-437a-bd81-8cc7317154c4" />
-        <range start1="367" end1="367" start2="371" end2="372" changelist="bf3814e2-8071-437a-bd81-8cc7317154c4" />
-      </ranges>
-    </file>
-  </component>
   <component name="ProjectColorInfo"><![CDATA[{
   "associatedIndex": 6
 }]]></component>
@@ -262,7 +241,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1748249615329</updated>
-      <workItem from="1748249616406" duration="3430000" />
+      <workItem from="1748249616406" duration="7887000" />
     </task>
     <task id="LOCAL-00001" summary="start">
       <option name="closed" value="true" />
@@ -296,7 +275,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748250098513</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="1.1 RunwayLength GPS Fix">
+      <option name="closed" value="true" />
+      <created>1748253226138</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1748253226138</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -305,10 +292,11 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="start" />
     <MESSAGE value="1.0" />
-    <option name="LAST_COMMIT_MESSAGE" value="1.0" />
+    <MESSAGE value="1.1 RunwayLength GPS Fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="1.1 RunwayLength GPS Fix" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/FPA$gui.coverage" NAME="gui Coverage Results" MODIFIED="1748253022341" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/FPA$gui.coverage" NAME="gui Coverage Results" MODIFIED="1748261650145" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/FPA$performancecalc.coverage" NAME="performancecalc Coverage Results" MODIFIED="1748250281854" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
