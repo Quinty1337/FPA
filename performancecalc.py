@@ -226,7 +226,7 @@ class FlightPerformanceCalculator:
 
             # Find where speed starts increasing from near zero
             # Using a small threshold to account for sensor noise
-            speed_threshold = 10.0  # m/s
+            speed_threshold = 3.0  # m/s
             takeoff_start_idx = takeoff_data[takeoff_data['speed[m/s]'] > speed_threshold].index.min()
 
             if pd.isna(takeoff_start_idx):
@@ -246,7 +246,7 @@ class FlightPerformanceCalculator:
                                                                                     min_periods=1).mean()
 
             # Find where vertical acceleration becomes positive after takeoff start
-            vert_acc_threshold = 1.0  # m/s²
+            vert_acc_threshold = 1.2  # m/s²
             takeoff_data_after_start = takeoff_data.loc[takeoff_start_idx:]
             liftoff_idx = takeoff_data_after_start[
                 takeoff_data_after_start['vertical_acc'] > vert_acc_threshold].index.min()

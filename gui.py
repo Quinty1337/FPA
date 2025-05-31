@@ -304,10 +304,10 @@ class FlightAnalyzerGUI(QMainWindow):
             self.status_label.setStyleSheet("color: red")
 
     def select_file(self):
-        csvfile = os.path.isfile("./FlightLogs/LOG_Flight2.CSV")
-        if csvfile:
-            self.process_file("./FlightLogs/LOG_Flight2.CSV")
-        else:
+        # csvfile = os.path.isfile("./FlightLogs/LOG_Flight2.CSV")
+        # if csvfile:
+        #     self.process_file("./FlightLogs/LOG_Flight2.CSV")
+        # else:
 
             file_name, _ = QFileDialog.getOpenFileName(
                 self,
