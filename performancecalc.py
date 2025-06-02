@@ -291,6 +291,7 @@ class FlightPerformanceCalculator:
                 # Use average speed during takeoff
                 avg_speed = takeoff_data.loc[takeoff_start_idx:liftoff_idx, 'speed[m/s]'].mean()
                 distance = avg_speed * takeoff_duration
+                print("Calculated Take-off Runway distance with speed and time")
                 return distance
 
         except Exception as e:
@@ -386,6 +387,7 @@ class FlightPerformanceCalculator:
                 # Use average speed during landing
                 avg_speed = landing_data.loc[touchdown_idx:stop_idx, 'speed[m/s]'].mean()
                 distance = avg_speed * landing_duration
+                print("Calculated Landing Runway distance with speed and time")
                 return distance
         except Exception as e:
             print(f"Error calculating actual landing length: {e}")
