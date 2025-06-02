@@ -243,13 +243,16 @@ class FlightAnalyzerGUI(QMainWindow):
         self.stdout_redirector = ConsoleRedirector(self.console_output)
         sys.stdout = self.stdout_redirector
 
-        # Data storage
         self.current_file = None
+        # Data storage
         self.processed_data = None
         self.performance_calculator = None
     
         # Set initial parameter values
         self.set_initial_parameters()
+
+
+
 
     def _create_parameter_input(self, name, min_val, max_val, step):
         """Helper method to create parameter input fields"""
@@ -301,19 +304,24 @@ class FlightAnalyzerGUI(QMainWindow):
             self.status_label.setStyleSheet("color: red")
 
     def select_file(self):
-        file_name, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select CSV File",
-            "",
-            "CSV Files (*.csv);;All Files (*)"
-        )
+        # csvfile = os.path.isfile("./FlightLogs/LOG_Flight2.CSV")
+        # if csvfile:
+        #     self.process_file("./FlightLogs/LOG_Flight2.CSV")
+        # else:
 
-        if file_name:
-            self.current_file = file_name
-            self.file_label.setText(os.path.basename(file_name))
-            self.process_file(file_name)
-            self.export_button.setEnabled(True)
-            self.overlay_button.setEnabled(True)  # Add this line to enable the overlay button
+            file_name, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select CSV File",
+                "",
+                "CSV Files (*.csv);;All Files (*)"
+            )
+
+            if file_name:
+                self.current_file = file_name
+                self.file_label.setText(os.path.basename(file_name))
+                self.process_file(file_name)
+                self.export_button.setEnabled(True)
+                self.overlay_button.setEnabled(True)  # Add this line to enable the overlay button
 
     def create_plots(self):
         """Create visualization plots with takeoff and landing points"""
@@ -602,6 +610,7 @@ def main():
     window = FlightAnalyzerGUI()
     window.show()
     sys.exit(app.exec())
+
 
 def process_data(self):
     """Process and prepare data for display"""

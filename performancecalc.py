@@ -226,7 +226,7 @@ class FlightPerformanceCalculator:
 
             # Find where speed starts increasing from near zero
             # Using a small threshold to account for sensor noise
-            speed_threshold = 10.0  # m/s
+            speed_threshold = 3.0  # m/s
             takeoff_start_idx = takeoff_data[takeoff_data['speed[m/s]'] > speed_threshold].index.min()
 
             if pd.isna(takeoff_start_idx):
@@ -246,7 +246,7 @@ class FlightPerformanceCalculator:
                                                                                     min_periods=1).mean()
 
             # Find where vertical acceleration becomes positive after takeoff start
-            vert_acc_threshold = 1.0  # m/s²
+            vert_acc_threshold = 1.2  # m/s²
             takeoff_data_after_start = takeoff_data.loc[takeoff_start_idx:]
             liftoff_idx = takeoff_data_after_start[
                 takeoff_data_after_start['vertical_acc'] > vert_acc_threshold].index.min()
@@ -313,6 +313,7 @@ class FlightPerformanceCalculator:
             # Find touchdown point (where altitude is close to zero)
             # Using a small threshold to account for sensor noise
             altitude_threshold = 0.02  # meters
+
             touchdown_candidates = landing_data[landing_data['Approxaltitude[m]'].abs() < altitude_threshold]
 
             if touchdown_candidates.empty:
@@ -324,18 +325,21 @@ class FlightPerformanceCalculator:
             # From potential touchdown points, find the one that's followed by continuous ground roll
             # This helps avoid false positives during approach
             touchdown_idx = None
+            devider =len(landing_data)/2
+            # print(list(touchdown_candidates.index), 'touchdown candidates')
+            # print(len(landing_data)-devider, 'devided' )
+
             for idx in touchdown_candidates.index:
-                if idx > len(landing_data) - 10 & idx < len(takeoff_data) + 10:  # Skip points near the end of the dataset
+                if idx > len(landing_data) - devider:  # Skip points near the end of the dataset
+                    touchdown_idx = idx
+                    break
                 # Check if the next N points are also close to ground level
-                    next_points = landing_data.loc[idx:idx + 1, 'Approxaltitude[m]']
-                    magval = pd.Series(next_points, index=["a","b","c","d"])
-                    print(magval["b"])
-                    # print(type(next_points.abs()))
-                    if (next_points.abs() < altitude_threshold).all():
-                        touchdown_idx = idx
-                        continue
-
-
+                #     next_points = landing_data.loc[idx:idx + 1, 'Approxaltitude[m]']
+                #     # print(list(next_points))
+                #     print(idx)
+                #     if (next_points.abs() < altitude_threshold).all():
+                #         touchdown_idx = idx
+                #         continue
             print(touchdown_idx)
             if touchdown_idx is None:
                 # If no suitable touchdown point found, use the last altitude crossing
